@@ -1,0 +1,29 @@
+{
+  "schema": "1.0",
+  "type": "whmcs-gateways",
+  "name": "mpesa",
+  "license": "MIT",
+  "category": "payments",
+  "description": {
+    "name": "LIPA NA M-PESA",
+    "tagline": "M-Pesa Payment Gateway for WHMCS",
+    "long": "A seamless integration for accepting mobile payments through M-Pesa in your WHMCS platform.",
+    "features": [
+      "Accept payments via M-Pesa",
+      "Make payment request via STK Push"
+    ]
+  },
+  "logo": {
+    "filename": "logo.png"
+  },
+  "support": {
+    "homepage": "https://github.com/hosteeka/whmcs-extensions/issues",
+    "docs_url": "https://github.com/hosteeka/whmcs-extensions/blob/main/modules/gateways/mpesa/README.md"
+  },
+  "authors": [
+    {
+      "name": "Hosteeka Technologies",
+      "homepage": "https://github.com/hosteeka/whmcs-extensions"
+    }
+  ]
+}
