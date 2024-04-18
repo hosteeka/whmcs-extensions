@@ -1,0 +1,49 @@
+version: "3.8"
+services:
+  mysql:
+    image: mysql:latest
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: whmcs
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      start_period: 1m
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "3306:3306"
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: password # should match MYSQL_ROOT_PASSWORD in mysql service
+    ports:
+      - "8080:80"
+  whmcs:
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./includes
+          target: /var/www/html/includes
+        - action: sync
+          path: ./modules
+          target: /var/www/html/modules
+        - action: sync
+          path: ./templates
+          target: /var/www/html/templates
+    ports:
+      - "80:80"
+volumes:
+  mysql_data:
