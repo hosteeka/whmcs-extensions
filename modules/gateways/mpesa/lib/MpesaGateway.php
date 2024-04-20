@@ -12,13 +12,15 @@ class MpesaGateway
   private const AUTH_URL = '/oauth/v1/generate?grant_type=client_credentials';
   private const STK_PUSH_URL = '/mpesa/stkpush/v1/processrequest';
 
-  # Define the class properties
+  # Define private class properties
   private $host;
-  private $shortcode;
   private $shortcodeType;
   private $consumerKey;
   private $consumerSecret;
   private $passkey;
+
+  # Define public class properties
+  public $shortcode;
 
   public function __construct($params)
   {
@@ -122,6 +124,7 @@ class MpesaGateway
    * @param float $amount
    * @param string $currency
    * @param string $invoiceid
+   * @param string $callbackurl
    * 
    * @return array
    */
