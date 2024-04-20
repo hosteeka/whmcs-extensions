@@ -62,9 +62,10 @@ function mpesa_config()
           $table->string('amount');
           $table->string('transaction_timestamp')->nullable();
           $table->string('status');
+          $table->string('status_code')->nullable();
+          $table->string('status_message')->nullable();
           $table->string('merchant_request_id')->nullable();
           $table->string('checkout_request_id')->nullable();
-          $table->timestamps();
         }
       );
     }
