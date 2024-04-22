@@ -168,7 +168,7 @@ function mpesa_link($params)
 {
   # Invoice Variables
   $invoiceid = $params['invoiceid'];
-  $amount = $params['amount'];
+  $amount = ceil($params['amount']);
   $currency = $params['currency'];
 
   # Client Variables
@@ -193,15 +193,29 @@ function mpesa_link($params)
   );
 
   $alert = '';
+  $script = '';
 
   if (isset($_POST['stkpush'])) {
-    $phone = $_POST['phone'];
+    $phone = formatPhoneNumber($_POST['phone']);
     $callbackurl = $systemurl . '/modules/gateways/callback/' . $paymentmethod . '.php';
     $gateway = new WHMCS\Module\Gateway\Mpesa\MpesaGateway($gatewayParams);
     $response = $gateway->stkPush($phone, $amount, $currency, $invoiceid, $callbackurl);
 
     if ($response['ResponseCode'] == '0') {
-      $alert = '<div class="alert alert-success small" role="alert">Payment request sent successfully. Check your phone for PIN prompt</div>';
+      $loadingurl = $systemurl . '/modules/gateways/' . $paymentmethod . '/loading.gif';
+
+      $alert = <<<HTML
+        <div class="alert alert-success small" role="alert">
+          Payment request sent successfully. Check your phone for PIN prompt
+        </div>
+
+        <div class="text-center">
+          <img src="$loadingurl" alt="Loading..." />
+        </div>
+      HTML;
+
+      $merchantRequestId = $response['MerchantRequestID'];
+      $checkoutRequestId = $response['CheckoutRequestID'];
 
       Capsule::table('mod_mpesa_transactions')->insert([
         'shortcode' => $gateway->shortcode,
@@ -209,11 +223,53 @@ function mpesa_link($params)
         'phone_number' => $phone,
         'amount' => $amount,
         'status' => 'Pending',
-        'merchant_request_id' => $response['MerchantRequestID'],
-        'checkout_request_id' => $response['CheckoutRequestID'],
+        'merchant_request_id' => $merchantRequestId,
+        'checkout_request_id' => $checkoutRequestId,
       ]);
+
+      $statuslink = $systemurl . '/modules/gateways/' . $paymentmethod . '/status.php?invoiceid=' . $invoiceid . '&merchantRequestId=' . $merchantRequestId . '&checkoutRequestId=' . $checkoutRequestId;
+
+      $script = <<<JS
+        <script type="text/javascript">
+          const polling = setInterval(function() {            
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '$statuslink', true);
+            xhr.send();
+
+            xhr.onreadystatechange = function() {
+              if (xhr.readyState === 4 && xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+
+                if (response.status === 'Paid') {
+                  // Reload page to update invoice status
+                  location.reload();
+                } else if (response.status === 'Failed') {
+                  // Remove any existing alerts
+                  document.querySelector('#alertcontainer').innerHTML = '';
+
+                  // Add error message alert
+                  const alert = document.createElement('div');
+                  alert.className = 'alert alert-danger small';
+                  alert.role = 'alert';
+                  alert.textContent = response.message;
+
+                  document.querySelector('#alertcontainer').appendChild(alert);
+
+                  // Stop polling
+                  clearInterval(polling);
+                }
+              }
+            }
+          }, 5000);
+        </script>
+      JS;
+
     } else {
-      $alert = '<div class="alert alert-danger small" role="alert">Failed to send payment request</div>';
+      $alert = <<<HTML
+        <div class="alert alert-danger small" role="alert">
+          Failed to send payment request
+        </div>
+      HTML;
 
       logActivity('M-PESA Gateway: ' . $response['ResponseDescription'] . ' (' . $response['ResponseCode']) . ')';
     }
@@ -221,7 +277,9 @@ function mpesa_link($params)
 
   $htmlOutput = <<<HTML
     <div>
-      <form class="form-inline mb-3" method="POST">
+      $script
+      
+      <form id="mpesaform" class="form-inline mb-3" method="POST">
         <div class="input-group mr-2">
           <div class="input-group-prepend">
             <span id="phone-prefix" class="input-group-text">+254</span>
@@ -235,9 +293,28 @@ function mpesa_link($params)
         </button>
       </form>
 
-      $alert
+      <div id="alertcontainer">
+        $alert
+      </div>
     </div>
   HTML;
 
   return $htmlOutput;
+}
+
+/**
+ * Format the phone number to the format 2547XXXXXXXX or 2541XXXXXXXX.
+ * 
+ * @param string $phone
+ * 
+ * @return string
+ */
+function formatPhoneNumber($phone)
+{
+  // if the phone number starts with 07, 7, 01 or 1, replace it with 2547
+  if (preg_match('/^(07|7|01|1)/', $phone)) {
+    $phone = '254' . substr($phone, -9);
+  }
+
+  return $phone;    
 }
