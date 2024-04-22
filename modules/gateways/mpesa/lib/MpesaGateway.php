@@ -101,23 +101,6 @@ class MpesaGateway
   }
 
   /**
-   * Format the phone number to the format 2547XXXXXXXX or 2541XXXXXXXX.
-   * 
-   * @param string $phone
-   * 
-   * @return string
-   */
-  private function formatPhoneNumber($phone)
-  {
-    // if the phone number starts with 07, 7, 01 or 1, replace it with 2547
-    if (preg_match('/^(07|7|01|1)/', $phone)) {
-      $phone = '254' . substr($phone, -9);
-    }
-
-    return $phone;    
-  }
-
-  /**
    * Initiate an STK push.
    * 
    * @param string $phone
@@ -134,7 +117,6 @@ class MpesaGateway
     $url = $this->host . self::STK_PUSH_URL;
     $timestamp = date('YmdHis');
     $password = base64_encode($this->shortcode . $this->passkey . $timestamp);
-    $phone = $this->formatPhoneNumber($phone);
     $transactionType = $this->shortcodeType == 'Paybill' ? 'CustomerPayBillOnline' : 'CustomerBuyGoodsOnline';
 
     $response = $this->curlRequest($url, 'POST', [
@@ -147,7 +129,7 @@ class MpesaGateway
         'Password' => $password,
         'Timestamp' => $timestamp,
         'TransactionType' => $transactionType,
-        'Amount' => floatval($amount),
+        'Amount' => $amount,
         'PartyA' => $phone,
         'PartyB' => $this->shortcode,
         'PhoneNumber' => $phone,
